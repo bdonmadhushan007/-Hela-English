@@ -27,8 +27,42 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create Flutter Project
-        run: flutter create --project-name hela_english .
+      - name: Create Android Project Files
+        run: flutter create --platforms=android --project-name hela_english .
+
+      - name: Add Android Voice Permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+
+          permissions = """
+              <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+          """
+
+          s = re.sub(
+              r'(<manifest\b[^>]*>)',
+              lambda m: m.group(1) + permissions,
+              s,
+              count=1
+          )
+
+          queries = """
+              <queries>
+                  <intent>
+                      <action android:name="android.speech.RecognitionService"/>
+                  </intent>
+              </queries>
+          """
+
+          s = s.replace("<application", queries + "\n    <application", 1)
+          p.write_text(s)
+          print("Voice permissions added successfully.")
+          PY
 
       - name: Get Dependencies
         run: flutter pub get
