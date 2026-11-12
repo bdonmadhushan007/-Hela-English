@@ -14,13 +14,10 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-  # English Voice
   flutter_tts: ^4.2.5
 
-  # Microphone Speech Recognition
   speech_to_text: ^7.4.0
 
-  # Save learning progress
   shared_preferences: ^2.5.3
 
 dev_dependencies:
@@ -28,6 +25,8 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
