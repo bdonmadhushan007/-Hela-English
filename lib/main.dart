@@ -12,7 +12,6 @@ void main() {
 const Color navy = Color(0xFF101746);
 const Color blue = Color(0xFF315BFF);
 const Color purple = Color(0xFF853BFF);
-const Color backgroundColor = Color(0xFFF3F5FF);
 
 class HelaEnglishApp extends StatelessWidget {
   const HelaEnglishApp({super.key});
@@ -24,9 +23,8 @@ class HelaEnglishApp extends StatelessWidget {
       title: 'HELA ENGLISH',
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: backgroundColor,
         colorScheme: ColorScheme.fromSeed(seedColor: blue),
-        fontFamily: 'Roboto',
+        scaffoldBackgroundColor: const Color(0xFFF3F5FF),
       ),
       home: const MainScreen(),
     );
@@ -166,17 +164,25 @@ const List<List<String>> vocabulary = [
   ['Future', 'අනාගතය'],
 ];
 
-const List<List<dynamic>> quizQuestions = [
-  ['What is the meaning of "Apple"?', 'ඇපල්', 'පොත', 'ගස', 'ගෙදර', 0],
-  ['What is the opposite of "Hot"?', 'Warm', 'Cold', 'Big', 'Fast', 1],
-  ['How do you say "ස්තුතියි" in English?', 'Sorry', 'Please', 'Thank you', 'Hello', 2],
-  ['What is the plural of "Book"?', 'Bookes', 'Books', 'Bookies', 'Book', 1],
-  ['Choose the correct sentence.', 'I am happy.', 'I happy am.', 'Happy I am?', 'I be happy.', 0],
-  ['What is the meaning of "Beautiful"?', 'කෝපය', 'ලස්සන', 'දුක', 'බය', 1],
-  ['What is the past tense of "Go"?', 'Goed', 'Going', 'Went', 'Goes', 2],
-  ['How do you say "සුබ උදෑසනක්"?', 'Good night', 'Good morning', 'Goodbye', 'Good evening', 1],
-  ['Choose the correct article: ___ apple', 'A', 'An', 'Thee', 'No article', 1],
-  ['What is the opposite of "Happy"?', 'Sad', 'Glad', 'Joyful', 'Excited', 0],
+class QuizQuestion {
+  final String question;
+  final List<String> options;
+  final int answer;
+
+  const QuizQuestion(this.question, this.options, this.answer);
+}
+
+const List<QuizQuestion> quizQuestions = [
+  QuizQuestion('What is the meaning of Apple?', ['ඇපල්', 'පොත', 'ගස', 'ගෙදර'], 0),
+  QuizQuestion('Opposite of Hot?', ['Warm', 'Cold', 'Big', 'Fast'], 1),
+  QuizQuestion('How do you say ස්තුතියි?', ['Sorry', 'Please', 'Thank you', 'Hello'], 2),
+  QuizQuestion('Plural of Book?', ['Bookes', 'Books', 'Bookies', 'Book'], 1),
+  QuizQuestion('Choose the correct sentence.', ['I am happy.', 'I happy am.', 'Happy I am?', 'I be happy.'], 0),
+  QuizQuestion('Meaning of Beautiful?', ['කෝපය', 'ලස්සන', 'දුක', 'බය'], 1),
+  QuizQuestion('Past tense of Go?', ['Goed', 'Going', 'Went', 'Goes'], 2),
+  QuizQuestion('How do you say සුබ උදෑසනක්?', ['Good night', 'Good morning', 'Goodbye', 'Good evening'], 1),
+  QuizQuestion('Choose the correct article: ___ apple', ['A', 'An', 'Thee', 'No article'], 1),
+  QuizQuestion('Opposite of Happy?', ['Sad', 'Glad', 'Joyful', 'Excited'], 0),
 ];
 
 class MainScreen extends StatefulWidget {
@@ -187,45 +193,45 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int selectedTab = 0;
-  int completedLessons = 0;
+  int tab = 0;
+  int completed = 0;
   int bestScore = 0;
   Set<String> savedWords = {};
 
   @override
   void initState() {
     super.initState();
-    loadProgress();
+    loadData();
   }
 
-  Future<void> loadProgress() async {
+  Future<void> loadData() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      completedLessons = prefs.getInt('completedLessons') ?? 0;
+      completed = prefs.getInt('completed') ?? 0;
       bestScore = prefs.getInt('bestScore') ?? 0;
       savedWords = (prefs.getStringList('savedWords') ?? []).toSet();
     });
   }
 
-  Future<void> saveProgress() async {
+  Future<void> saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('completedLessons', completedLessons);
+    await prefs.setInt('completed', completed);
     await prefs.setInt('bestScore', bestScore);
     await prefs.setStringList('savedWords', savedWords.toList());
   }
 
-  void markLessonComplete() {
-    if (completedLessons < lessons.length) {
-      setState(() => completedLessons++);
-      saveProgress();
+  void completeLesson() {
+    if (completed < lessons.length) {
+      setState(() => completed++);
+      saveData();
     }
   }
 
   void updateScore(int score) {
     if (score > bestScore) {
       setState(() => bestScore = score);
-      saveProgress();
+      saveData();
     }
   }
 
@@ -237,39 +243,34 @@ class _MainScreenState extends State<MainScreen> {
         savedWords.add(word);
       }
     });
-    saveProgress();
+    saveData();
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
+    final pages = <Widget>[
       HomePage(
-        completed: completedLessons,
-        savedCount: savedWords.length,
+        completed: completed,
         bestScore: bestScore,
-        onNavigate: (index) => setState(() => selectedTab = index),
+        savedCount: savedWords.length,
+        onNavigate: (index) => setState(() => tab = index),
       ),
-      LessonsPage(onComplete: markLessonComplete),
+      LessonsPage(onComplete: completeLesson),
       VocabularyPage(savedWords: savedWords, onToggle: toggleWord),
       QuizPage(onScore: updateScore),
       const SpeakingPage(),
       ProfilePage(
-        completed: completedLessons,
+        completed: completed,
         bestScore: bestScore,
         savedCount: savedWords.length,
       ),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: selectedTab,
-        children: pages,
-      ),
+      body: IndexedStack(index: tab, children: pages),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedTab,
-        onDestinationSelected: (index) {
-          setState(() => selectedTab = index);
-        },
+        selectedIndex: tab,
+        onDestinationSelected: (index) => setState(() => tab = index),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.menu_book_rounded), label: 'Lessons'),
@@ -298,7 +299,7 @@ class PageHeader extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900, color: navy)),
           const SizedBox(height: 5),
-          Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+          Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
         ],
       ),
     );
@@ -307,15 +308,15 @@ class PageHeader extends StatelessWidget {
 
 class HomePage extends StatelessWidget {
   final int completed;
-  final int savedCount;
   final int bestScore;
+  final int savedCount;
   final ValueChanged<int> onNavigate;
 
   const HomePage({
     super.key,
     required this.completed,
-    required this.savedCount,
     required this.bestScore,
+    required this.savedCount,
     required this.onNavigate,
   });
 
@@ -325,52 +326,42 @@ class HomePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          Row(
+          const Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [blue, purple]),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: const Icon(Icons.school_rounded, color: Colors.white, size: 30),
+              CircleAvatar(
+                radius: 27,
+                backgroundColor: blue,
+                child: Icon(Icons.school_rounded, color: Colors.white, size: 30),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('HELA ENGLISH', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: navy)),
-                    Text('Learn • Practice • Speak', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
+              SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('HELA ENGLISH', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: navy)),
+                  Text('Learn • Practice • Speak', style: TextStyle(color: Colors.grey)),
+                ],
               ),
-              const Icon(Icons.notifications_none_rounded, size: 28),
             ],
           ),
           const SizedBox(height: 25),
           Container(
             padding: const EdgeInsets.all(23),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF254CFF), Color(0xFF873CFF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: const LinearGradient(colors: [blue, purple]),
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
-                BoxShadow(color: blue.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 9)),
+                BoxShadow(color: blue.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 8)),
               ],
             ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('WELCOME TO', style: TextStyle(color: Colors.white70, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                Text('WELCOME TO', style: TextStyle(color: Colors.white70, letterSpacing: 2)),
                 SizedBox(height: 8),
                 Text('Your English\nLearning Journey!', style: TextStyle(color: Colors.white, fontSize: 27, height: 1.2, fontWeight: FontWeight.w900)),
                 SizedBox(height: 12),
-                Text('Learn English step by step with Sinhala support.', style: TextStyle(color: Colors.white, fontSize: 14)),
-                SizedBox(height: 18),
+                Text('Learn English step by step with Sinhala support.', style: TextStyle(color: Colors.white)),
+                SizedBox(height: 15),
                 Icon(Icons.auto_stories_rounded, color: Colors.white, size: 43),
               ],
             ),
@@ -378,20 +369,20 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: StatCard('Lessons', '$completed/${lessons.length}', Icons.menu_book_rounded, Colors.blue)),
-              const SizedBox(width: 10),
-              Expanded(child: StatCard('Best Quiz', '$bestScore/10', Icons.emoji_events_rounded, Colors.orange)),
-              const SizedBox(width: 10),
-              Expanded(child: StatCard('Saved', '$savedCount', Icons.bookmark_rounded, Colors.green)),
+              Expanded(child: StatCard('Lessons', '$completed/${lessons.length}', Icons.menu_book, Colors.blue)),
+              const SizedBox(width: 8),
+              Expanded(child: StatCard('Best Quiz', '$bestScore/10', Icons.emoji_events, Colors.orange)),
+              const SizedBox(width: 8),
+              Expanded(child: StatCard('Saved', '$savedCount', Icons.bookmark, Colors.green)),
             ],
           ),
           const SizedBox(height: 25),
           const Text('Start Learning', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: navy)),
           const SizedBox(height: 12),
-          FeatureTile('English Lessons', 'Learn useful English sentences', Icons.menu_book_rounded, Colors.blue, () => onNavigate(1)),
-          FeatureTile('Vocabulary', 'Build your English word power', Icons.translate_rounded, Colors.green, () => onNavigate(2)),
-          FeatureTile('English Quiz', 'Test your knowledge', Icons.quiz_rounded, Colors.deepPurple, () => onNavigate(3)),
-          FeatureTile('Speaking Practice', 'Listen and practise speaking', Icons.mic_rounded, Colors.deepOrange, () => onNavigate(4)),
+          FeatureTile('English Lessons', 'Learn useful English sentences', Icons.menu_book, Colors.blue, () => onNavigate(1)),
+          FeatureTile('Vocabulary', 'Build your English word power', Icons.translate, Colors.green, () => onNavigate(2)),
+          FeatureTile('English Quiz', 'Test your knowledge', Icons.quiz, purple, () => onNavigate(3)),
+          FeatureTile('Speaking Practice', 'Listen and practise speaking', Icons.mic, Colors.deepOrange, () => onNavigate(4)),
         ],
       ),
     );
@@ -409,13 +400,13 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 7),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17)),
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 5),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 25),
+          Icon(icon, color: color, size: 24),
           const SizedBox(height: 7),
-          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
           Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
@@ -436,19 +427,16 @@ class FeatureTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.white,
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 11),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
+      margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.all(12),
         leading: CircleAvatar(
-          radius: 25,
           backgroundColor: color.withOpacity(0.12),
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 17),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
         onTap: onTap,
       ),
     );
@@ -464,25 +452,24 @@ class LessonsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const PageHeader('English Lessons', 'Learn 100 useful English sentences'),
+        const PageHeader('English Lessons', 'Learn useful English sentences'),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: lessons.length,
             itemBuilder: (context, index) {
               final lesson = lessons[index];
               return Card(
                 color: Colors.white,
-                margin: const EdgeInsets.only(bottom: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: blue.withOpacity(0.12),
-                    child: Text('${index + 1}', style: const TextStyle(color: blue, fontWeight: FontWeight.bold)),
+                    child: Text('${index + 1}', style: const TextStyle(color: blue)),
                   ),
                   title: Text(lesson.english, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(lesson.sinhala),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 15),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -549,4 +536,30 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
             const SizedBox(height: 25),
             Text(widget.lesson.english, textAlign: TextAlign.center, style: const TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: navy)),
             const SizedBox(height: 15),
-       
+            Text(widget.lesson.sinhala, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, color: purple)),
+            const SizedBox(height: 35),
+            FilledButton.icon(
+              onPressed: speak,
+              icon: const Icon(Icons.volume_up),
+              label: const Text('Listen to Pronunciation'),
+            ),
+            const SizedBox(height: 15),
+            FilledButton.icon(
+              onPressed: () {
+                widget.onComplete();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Lesson completed!')),
+                );
+              },
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Mark as Completed'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class VocabularyPage extends StatelessWidget {
+ 
